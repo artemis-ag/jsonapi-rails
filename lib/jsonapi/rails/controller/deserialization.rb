@@ -71,6 +71,43 @@ module JSONAPI
             end
           end
           # rubocop:enable Metrics/MethodLength, Metrics/AbcSize
+
+          # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
+          def deserializable_resources(key, options = {}, &block)
+            options = options.dup
+            klass = options.delete(:class) ||
+                    Class.new(JSONAPI::Rails::DeserializableResource, &block)
+
+            before_action(options) do |controller|
+              hash = controller.params.to_unsafe_hash
+                .with_indifferent_access[:_jsonapi]
+              if hash.nil?
+                JSONAPI::Rails.logger.warn do
+                  "Unable to deserialize #{key} because no JSON API payload was" \
+                  " found. (#{controller.controller_name}##{params[:action]})"
+                end
+                next
+              end
+
+              resource_pointers = []
+              resource_params = []
+
+              ActiveSupport::Notifications
+                .instrument('parse.jsonapi-rails',
+                            key: key, payload: hash, class: klass) do
+                hash[:data].each_with_index do |resource, index|
+                  JSONAPI::Parser::Document.parse_primary_resource!(resource)
+                  resource = klass.new(resource)
+                  resource_pointers[index] = resource.reverse_mapping
+                  resource_params.push resource.to_hash
+                end
+              end
+
+              controller.request.env[JSONAPI_POINTERS_KEY] = resource_pointers
+              controller.params[key.to_sym] = resource_params
+            end
+          end
+          # rubocop:enable Metrics/MethodLength, Metrics/AbcSize
         end
 
         # JSON pointers for deserialized fields.
