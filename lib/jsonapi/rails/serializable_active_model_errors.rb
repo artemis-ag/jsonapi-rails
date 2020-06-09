@@ -20,7 +20,9 @@ module JSONAPI
       def initialize(exposures)
         @errors = exposures[:object]
         @reverse_mapping = exposures[:_jsonapi_pointers] || {}
-
+        # TODO: handle bulk payloads somehow? We don't currently have a way to extract the correct
+        # pointers when the reverse_mapping contains values for multiple objects
+        @reverse_mapping = {} if @reverse_mapping.is_a?(Array)
         freeze
       end
 
