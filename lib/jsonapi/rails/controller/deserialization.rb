@@ -97,7 +97,7 @@ module JSONAPI
                             key: key, payload: hash, class: klass) do
                 hash[:data].each_with_index do |resource, index|
                   JSONAPI::Parser::Document.parse_primary_resource!(resource)
-                  resource = klass.new(resource)
+                  resource = klass.new(resource, root: "/data/#{index}")
                   resource_pointers[index] = resource.reverse_mapping
                   resource_params.push resource.to_hash
                 end
