@@ -49,7 +49,11 @@ module JSONAPI
           RENDERERS.each do |name, renderer|
             ::ActionController::Renderers.add(name) do |resources, options|
               # Renderer proc is evaluated in the controller context.
-              self.content_type ||= Mime[:jsonapi]
+              self.content_type = [
+                Mime[:jsonapi].to_s,
+                jsonapi_supported_extensions,
+                jsonapi_response_extensions(options[:extensions])
+              ].compact.join('; ')
 
               ActiveSupport::Notifications.instrument('render.jsonapi-rails',
                                                       resources: resources,

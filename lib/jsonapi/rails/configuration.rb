@@ -29,6 +29,8 @@ module JSONAPI
         { url_helpers: ::Rails.application.routes.url_helpers }
       }
 
+      DEFAULT_JSONAPI_EXTENSIONS = []
+
       DEFAULT_JSONAPI_FIELDS = ->() { nil }
 
       DEFAULT_JSONAPI_INCLUDE = ->() { nil }
@@ -46,6 +48,7 @@ module JSONAPI
         jsonapi_errors_class: DEFAULT_JSONAPI_ERRORS_CLASS,
         jsonapi_cache:   DEFAULT_JSONAPI_CACHE,
         jsonapi_expose:  DEFAULT_JSONAPI_EXPOSE,
+        jsonapi_extensions: DEFAULT_JSONAPI_EXTENSIONS,
         jsonapi_fields:  DEFAULT_JSONAPI_FIELDS,
         jsonapi_include: DEFAULT_JSONAPI_INCLUDE,
         jsonapi_links:   DEFAULT_JSONAPI_LINKS,

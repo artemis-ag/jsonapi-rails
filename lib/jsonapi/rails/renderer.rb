@@ -28,6 +28,7 @@ module JSONAPI
                       .merge!(controller.jsonapi_pagination(resources))
                       .merge!(opts[:links] || {})
           opts[:expose] = controller.jsonapi_expose.merge!(opts[:expose] || {})
+          opts[:extensions] = []
           opts[:fields] ||= controller.jsonapi_fields
           opts[:include] ||= controller.jsonapi_include
           opts[:jsonapi] = opts.delete(:jsonapi_object) ||
