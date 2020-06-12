@@ -60,7 +60,7 @@ module JSONAPI
                 next
               end
 
-              if is_valid_bulk_request?(controller.request)
+              if extension_request?('bulk')
                 resource_pointers = []
                 resource_params = []
 
@@ -92,17 +92,15 @@ module JSONAPI
           end
         end
 
-        def is_valid_bulk_request?(request)
-          if headers_hash = request.headers['Content-Type']
-            .split(';')
-            .select { |a| a.include? '=' }
-            .map { |h| h.strip.split('=') }
-            .to_h
+        def extension_request?(extension)
+          supported_extensions = JSONAPI::Rails.config[:jsonapi_extensions]
+          return false unless supported_extensions.include?(extension)
 
-            !headers_hash['supported-ext'].nil? && !headers_hash['ext'].nil? && headers_hash['supported-ext'].include?('bulk') && headers_hash['ext'].include?('bulk')
-          else
-            false
-          end
+          requested_extensions = request.headers['Content-Type']
+            .match(/;\sext="([^=]*)"/)
+            .try(:[], 1).to_s
+            .split(',')
+          return (requested_extensions & supported_extensions).include?(extension)
         end
 
         # JSON pointers for deserialized fields.
@@ -123,10 +121,6 @@ module JSONAPI
 
           "ext=\"#{extensions.join(',')}\""
         end
-      end
-
-      def is_valid_bulk_request?
-        self.class.is_valid_bulk_request?(request)
       end
     end
   end

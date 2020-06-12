@@ -108,26 +108,88 @@ describe ActionController::Base, '.deserializable_resource',
   end
 
   context 'when deserializing multiple resources' do
-    controller do
-      deserializable_resources :user do
-        attribute(:name) do |val|
-          { 'first_name'.to_sym => val }
-        end
-      end
+   #  controller do
+   #    deserializable_resources :user do
+   #      attribute(:name) do |val|
+   #        { 'first_name'.to_sym => val }
+   #      end
+   #    end
 
-      def create
-        render plain: 'ok'
+   #    def create
+   #      render plain: 'ok'
+   #    end
+   #  end
+
+   #  it 'indexes the pointers to match the correct path in the document' do
+   #    post :create, params: array_payload
+
+   #    expected = [
+   #      { first_name: '/data/0/attributes/name',
+   #        type: '/data/0/type' }
+   #    ]
+   #    expect(controller.jsonapi_pointers).to eq(expected)
+   #  end
+  end
+end
+
+describe ActionController::Base, '#extension_request?', type: :controller do
+  describe '#extension_request?' do
+    let(:subject) { controller.extension_request?(inquired_extension) }
+
+    before(:each) do
+      request.headers['Content-Type'] = "application/vnd.api+json; ext=\"#{requested_extensions.join(',')}\""
+      JSONAPI::Rails.configure do |config|
+        config.jsonapi_extensions = supported_extensions
       end
     end
 
-    it 'indexes the pointers to match the correct path in the document' do
-      post :create, params: array_payload
+    after(:each) do
+      JSONAPI::Rails.configure do |config|
+        config.clear
+      end
+    end
 
-      expected = [
-        { first_name: '/data/0/attributes/name',
-          type: '/data/0/type' }
-      ]
-      expect(controller.jsonapi_pointers).to eq(expected)
+
+    context 'when no extensions are supported' do
+      let(:inquired_extension) { 'bulk' }
+      let(:supported_extensions) { [] }
+      let(:requested_extensions) { ['bulk', 'jsonpatch'] }
+
+      it { is_expected.to be_falsey }
+    end
+
+    context 'when the inquired extension is not supported' do
+      let(:inquired_extension) { 'jsonpatch' }
+      let(:supported_extensions) { ['bulk'] }
+      let(:requested_extensions) { ['bulk', 'jsonpatch'] }
+
+      it { is_expected.to be_falsey }
+    end
+
+    context 'when the extension is supported but not requested' do
+      let(:inquired_extension) { 'bulk' }
+      let(:supported_extensions) { ['bulk', 'jsonpatch'] }
+      let(:requested_extensions) { ['jsonpatch'] }
+
+      it { is_expected.to be_falsey }
+    end
+
+    context 'when the extension is supported and requested' do
+      let(:inquired_extension) { 'bulk' }
+      let(:supported_extensions) { ['bulk', 'jsonpatch'] }
+      let(:requested_extensions) { ['bulk'] }
+
+      it { is_expected.to be_truthy }
+    end
+
+    context 'when multiple extensions are requested' do
+      let(:inquired_extension) { 'bulk' }
+      let(:supported_extensions) { ['bulk', 'jsonpatch'] }
+      let(:requested_extensions) { ['bulk', 'jsonpatch'] }
+
+      it 'detects the inquired extension' do
+        expect(subject).to be_truthy
+      end
     end
   end
 end
