@@ -1,5 +1,6 @@
 require 'jsonapi/parser'
 require 'jsonapi/rails/deserializable_resource'
+require 'jsonapi/parser/document'
 
 module JSONAPI
   module Rails
@@ -59,55 +60,49 @@ module JSONAPI
                 next
               end
 
-              ActiveSupport::Notifications
-                .instrument('parse.jsonapi-rails',
-                            key: key, payload: hash, class: klass) do
-                JSONAPI::Parser::Resource.parse!(hash)
-                resource = klass.new(hash[:data])
-                controller.request.env[JSONAPI_POINTERS_KEY] =
-                  resource.reverse_mapping
-                controller.params[key.to_sym] = resource.to_hash
+              if is_valid_bulk_request?(controller.request)
+                resource_pointers = []
+                resource_params = []
+
+                ActiveSupport::Notifications
+                  .instrument('parse.jsonapi-rails',
+                              key: key, payload: hash, class: klass) do
+                  hash[:data].each_with_index do |resource, index|
+                    JSONAPI::Parser::Document.parse_primary_resource!(resource)
+                    resource = klass.new(resource, root: "/data/#{index}")
+                    resource_pointers[index] = resource.reverse_mapping
+                    resource_params.push resource.to_hash
+                  end
+                end
+
+                controller.request.env[JSONAPI_POINTERS_KEY] = resource_pointers
+                controller.params[key.to_sym] = resource_params
+              else
+                ActiveSupport::Notifications
+                  .instrument('parse.jsonapi-rails',
+                              key: key, payload: hash, class: klass) do
+                  JSONAPI::Parser::Resource.parse!(hash)
+                  resource = klass.new(hash[:data])
+                  controller.request.env[JSONAPI_POINTERS_KEY] =
+                    resource.reverse_mapping
+                  controller.params[key.to_sym] = resource.to_hash
+                end
               end
             end
           end
-          # rubocop:enable Metrics/MethodLength, Metrics/AbcSize
+        end
 
-          # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
-          def deserializable_resources(key, options = {}, &block)
-            options = options.dup
-            klass = options.delete(:class) ||
-                    Class.new(JSONAPI::Rails::DeserializableResource, &block)
+        def is_valid_bulk_request?(request)
+          if headers_hash = request.headers['Content-Type']
+            .split(';')
+            .select { |a| a.include? '=' }
+            .map { |h| h.strip.split('=') }
+            .to_h
 
-            before_action(options) do |controller|
-              hash = controller.params.to_unsafe_hash
-                .with_indifferent_access[:_jsonapi]
-              if hash.nil?
-                JSONAPI::Rails.logger.warn do
-                  "Unable to deserialize #{key} because no JSON API payload was" \
-                  " found. (#{controller.controller_name}##{params[:action]})"
-                end
-                next
-              end
-
-              resource_pointers = []
-              resource_params = []
-
-              ActiveSupport::Notifications
-                .instrument('parse.jsonapi-rails',
-                            key: key, payload: hash, class: klass) do
-                hash[:data].each_with_index do |resource, index|
-                  JSONAPI::Parser::Document.parse_primary_resource!(resource)
-                  resource = klass.new(resource, root: "/data/#{index}")
-                  resource_pointers[index] = resource.reverse_mapping
-                  resource_params.push resource.to_hash
-                end
-              end
-
-              controller.request.env[JSONAPI_POINTERS_KEY] = resource_pointers
-              controller.params[key.to_sym] = resource_params
-            end
+            !headers_hash['supported-ext'].nil? && !headers_hash['ext'].nil? && headers_hash['supported-ext'].include?('bulk') && headers_hash['ext'].include?('bulk')
+          else
+            false
           end
-          # rubocop:enable Metrics/MethodLength, Metrics/AbcSize
         end
 
         # JSON pointers for deserialized fields.
