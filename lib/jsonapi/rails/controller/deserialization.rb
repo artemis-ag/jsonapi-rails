@@ -110,6 +110,23 @@ module JSONAPI
         def jsonapi_pointers
           request.env[JSONAPI_POINTERS_KEY] || {}
         end
+
+        def jsonapi_supported_extensions
+          extensions = JSONAPI::Rails.config[:jsonapi_extensions]
+          return '' unless extensions.any?
+
+          "supported-ext=\"#{extensions.join(',')}\""
+        end
+
+        def jsonapi_response_extensions(extensions = [])
+          return '' unless extensions.any?
+
+          "ext=\"#{extensions.join(',')}\""
+        end
+      end
+
+      def is_valid_bulk_request?
+        self.class.is_valid_bulk_request?(request)
       end
     end
   end

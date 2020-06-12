@@ -13,6 +13,19 @@ describe ActionController::Base, '.deserializable_resource',
     }
   end
 
+  let(:array_payload) do
+    {
+      _jsonapi: {
+        'data' => [
+          {
+            'type' => 'users',
+            'attributes' => { 'name' => 'Lucas' }
+          }
+        ]
+      }
+    }
+  end
+
   context 'when using default deserializer' do
     controller do
       deserializable_resource :user
@@ -90,6 +103,30 @@ describe ActionController::Base, '.deserializable_resource',
 
       expected = { Name: '/data/attributes/name',
                    type: '/data/type' }
+      expect(controller.jsonapi_pointers).to eq(expected)
+    end
+  end
+
+  context 'when deserializing multiple resources' do
+    controller do
+      deserializable_resources :user do
+        attribute(:name) do |val|
+          { 'first_name'.to_sym => val }
+        end
+      end
+
+      def create
+        render plain: 'ok'
+      end
+    end
+
+    it 'indexes the pointers to match the correct path in the document' do
+      post :create, params: array_payload
+
+      expected = [
+        { first_name: '/data/0/attributes/name',
+          type: '/data/0/type' }
+      ]
       expect(controller.jsonapi_pointers).to eq(expected)
     end
   end
