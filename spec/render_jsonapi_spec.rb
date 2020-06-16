@@ -34,24 +34,24 @@ describe ActionController::Base, '#render', type: :controller do
     end
 
     controller do
-      def index
+      def create
         render jsonapi: nil, extensions: []
       end
 
-      def index_with_extensions
+      def create_with_extensions
         render jsonapi: nil, extensions: ['bulk', 'jsonpatch']
       end
     end
 
     it 'content_type includes supported extension, ignores empty extensions' do
-      get :index
+      post :create
 
       expect(response.content_type).to eq('application/vnd.api+json; supported-ext="bulk"')
     end
 
     it 'content_type includes supported extensions, and delivered extensions even if not supported' do
-      routes.draw { get "index_with_extensions" => "anonymous#index_with_extensions" }
-      get :index_with_extensions
+      routes.draw { get "create_with_extensions" => "anonymous#create_with_extensions" }
+      post :create_with_extensions
 
       # if the parent application wants to render a response using an extension that is unsupported, let them
       expect(response.content_type).to eq('application/vnd.api+json; supported-ext="bulk"; ext="bulk,jsonpatch"')
