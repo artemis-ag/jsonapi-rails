@@ -20,6 +20,10 @@ describe ActionController::Base, '.deserializable_resource',
           {
             'type' => 'users',
             'attributes' => { 'name' => 'Lucas' }
+          },
+          {
+            'type' => 'users',
+            'attributes' => { 'name' => 'Fran' }
           }
         ]
       }
@@ -107,28 +111,49 @@ describe ActionController::Base, '.deserializable_resource',
     end
   end
 
-  context 'when deserializing multiple resources' do
-   #  controller do
-   #    deserializable_resources :user do
-   #      attribute(:name) do |val|
-   #        { 'first_name'.to_sym => val }
-   #      end
-   #    end
+  context 'when deserializing multiple resources with default deserializer' do
+    before(:each) do
+      request.headers['Content-Type'] = 'application/vnd.api+json; ext="bulk"'
+      JSONAPI::Rails.configure do |config|
+        config.jsonapi_extensions = ['bulk']
+      end
+    end
 
-   #    def create
-   #      render plain: 'ok'
-   #    end
-   #  end
+    after(:each) do
+      JSONAPI::Rails.configure do |config|
+        config.clear
+      end
+    end
 
-   #  it 'indexes the pointers to match the correct path in the document' do
-   #    post :create, params: array_payload
+    controller do
+      deserializable_resource :user
 
-   #    expected = [
-   #      { first_name: '/data/0/attributes/name',
-   #        type: '/data/0/type' }
-   #    ]
-   #    expect(controller.jsonapi_pointers).to eq(expected)
-   #  end
+      def create
+        render jsonapi: nil, extensions: ['bulk']
+      end
+    end
+
+    it 'indexes the pointers to match the correct path in the document' do
+      post :create, params: array_payload
+
+      expected = [
+        { name: '/data/0/attributes/name',
+          type: '/data/0/type' },
+        { name: '/data/1/attributes/name',
+          type: '/data/1/type' }
+      ]
+      expect(controller.jsonapi_pointers).to eq(expected)
+    end
+
+    it 'makes the deserialized resources available in params' do
+      post :create, params: array_payload
+
+      expected = [
+        { 'type' => 'users', 'name' => 'Lucas' },
+        { 'type' => 'users', 'name' => 'Fran' }
+      ]
+      expect(controller.params[:user]).to eq(expected)
+    end
   end
 end
 
