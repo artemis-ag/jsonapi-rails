@@ -18,6 +18,46 @@ describe ActionController::Base, '#render', type: :controller do
     end
   end
 
+  context 'with extensions' do
+    let(:supported_extensions) { ['bulk'] }
+
+    before(:each) do
+      JSONAPI::Rails.configure do |config|
+        config.jsonapi_extensions = supported_extensions
+      end
+    end
+
+    after(:each) do
+      JSONAPI::Rails.configure do |config|
+        config.clear
+      end
+    end
+
+    controller do
+      def index
+        render jsonapi: nil, extensions: []
+      end
+
+      def index_with_extensions
+        render jsonapi: nil, extensions: ['bulk', 'jsonpatch']
+      end
+    end
+
+    it 'content_type includes supported extension, ignores empty extensions' do
+      get :index
+
+      expect(response.content_type).to eq('application/vnd.api+json; supported-ext="bulk"')
+    end
+
+    it 'content_type includes supported extensions, and delivered extensions even if not supported' do
+      routes.draw { get "index_with_extensions" => "anonymous#index_with_extensions" }
+      get :index_with_extensions
+
+      # if the parent application wants to render a response using an extension that is unsupported, let them
+      expect(response.content_type).to eq('application/vnd.api+json; supported-ext="bulk"; ext="bulk,jsonpatch"')
+    end
+  end
+
   context 'when using a cache' do
     controller do
       def serializer
