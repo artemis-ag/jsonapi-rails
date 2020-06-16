@@ -110,13 +110,13 @@ module JSONAPI
 
         def jsonapi_supported_extensions
           extensions = JSONAPI::Rails.config[:jsonapi_extensions]
-          return '' unless extensions.any?
+          return nil unless !extensions.nil? && extensions.any?
 
           "supported-ext=\"#{extensions.join(',')}\""
         end
 
         def jsonapi_response_extensions(extensions = [])
-          return '' unless extensions.any?
+          return nil unless !extensions.nil? && extensions.any?
 
           "ext=\"#{extensions.join(',')}\""
         end

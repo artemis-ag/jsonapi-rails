@@ -134,7 +134,7 @@ end
 
 describe ActionController::Base, '#extension_request?', type: :controller do
   describe '#extension_request?' do
-    let(:subject) { controller.extension_request?(inquired_extension) }
+    subject { controller.extension_request?(inquired_extension) }
 
     before(:each) do
       request.headers['Content-Type'] = "application/vnd.api+json; ext=\"#{requested_extensions.join(',')}\""
