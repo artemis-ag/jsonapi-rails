@@ -74,7 +74,7 @@ describe ActionController::Base, type: :controller do
     end
   end
 
-  context 'when prividing fields renderer option' do
+  context 'when providing fields renderer option' do
     controller do
       def index
         render jsonapi: User.all,
