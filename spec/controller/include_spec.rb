@@ -90,7 +90,7 @@ describe ActionController::Base, type: :controller do
     end
   end
 
-  context 'when prividing include renderer option' do
+  context 'when providing include renderer option' do
     controller do
       def index
         render jsonapi: Post.all, include: 'author'
