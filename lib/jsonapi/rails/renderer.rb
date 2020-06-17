@@ -52,10 +52,10 @@ module JSONAPI
         options = default_options(options, controller)
 
         errors = [errors] unless errors.is_a?(Array)
+
         errors = errors.map.with_index do |e, index|
-          # TODO: only wrap ActiveModel::Errors in JSONAPI::RAILS::ActiveModel::Errors
-          # also: how does this effect application configuration?
-          JSONAPI::Rails::ActiveModel::Errors.new(e, controller.jsonapi_pointers[index])
+          pointers = controller.jsonapi_pointers[index]
+          e.is_a?(Hash) ? e : JSONAPI::Rails::ActiveModel::Errors.new(e, pointers)
         end
 
         @renderer.render_errors(errors, options)
