@@ -97,8 +97,8 @@ module JSONAPI
           return false unless supported_extensions.include?(extension)
 
           requested_extensions = request.headers['Content-Type']
-            .match(/;\sext='([^=]*)'|;\sext="([^=]*)"/)
-            .try { |m| !m[1].nil? ? m[1] : m[2] }
+            .match(/;\sext=["']([^=]*)["']/)
+            .try(:[], 1)
             .split(',')
           return (requested_extensions & supported_extensions).include?(extension)
         end
@@ -111,13 +111,13 @@ module JSONAPI
 
         def jsonapi_supported_extensions
           extensions = JSONAPI::Rails.config[:jsonapi_extensions]
-          return nil unless !extensions.nil? && extensions.any?
+          return nil unless extensions&.any?
 
           "supported-ext=\"#{extensions.join(',')}\""
         end
 
         def jsonapi_response_extensions(extensions = [])
-          return nil unless !extensions.nil? && extensions.any?
+          return nil unless extensions&.any?
 
           "ext=\"#{extensions.join(',')}\""
         end
