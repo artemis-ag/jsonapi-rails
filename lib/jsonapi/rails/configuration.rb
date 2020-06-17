@@ -14,7 +14,7 @@ module JSONAPI
       end.freeze
 
       DEFAULT_JSONAPI_ERRORS_CLASS = DEFAULT_JSONAPI_CLASS.dup.merge!(
-        'ActiveModel::Errors'.to_sym =>
+        'JSONAPI::Rails::ActiveModel::Errors'.to_sym =>
         JSONAPI::Rails::SerializableActiveModelErrors,
         'Hash'.to_sym => JSONAPI::Rails::SerializableErrorHash
       ).freeze

@@ -1,4 +1,5 @@
 require 'jsonapi/serializable/renderer'
+require 'jsonapi/rails/active_model/errors'
 
 module JSONAPI
   module Rails
@@ -51,6 +52,11 @@ module JSONAPI
         options = default_options(options, controller)
 
         errors = [errors] unless errors.is_a?(Array)
+        errors = errors.map.with_index do |e, index|
+          # TODO: only wrap ActiveModel::Errors in JSONAPI::RAILS::ActiveModel::Errors
+          # also: how does this effect application configuration?
+          JSONAPI::Rails::ActiveModel::Errors.new(e, controller.jsonapi_pointers[index])
+        end
 
         @renderer.render_errors(errors, options)
       end
@@ -64,7 +70,6 @@ module JSONAPI
           opts[:expose] =
             controller.jsonapi_expose
                       .merge(opts[:expose] || {})
-                      .merge!(_jsonapi_pointers: controller.jsonapi_pointers)
           opts[:jsonapi] = opts.delete(:jsonapi_object) ||
                            controller.jsonapi_object
         end
