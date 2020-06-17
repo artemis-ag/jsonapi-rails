@@ -97,7 +97,7 @@ module JSONAPI
 
           requested_extensions = request.headers['Content-Type']
             .match(/;\sext='([^=]*)'|;\sext="([^=]*)"/)
-            .try(:[], 1).to_s
+            .try { |m| !m[1].nil? ? m[1] : m[2] }
             .split(',')
           return (requested_extensions & supported_extensions).include?(extension)
         end
