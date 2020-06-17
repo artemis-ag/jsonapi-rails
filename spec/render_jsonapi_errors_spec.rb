@@ -31,6 +31,34 @@ describe ActionController::Base, '#render', type: :controller do
     }
   end
 
+  let(:serialized_bulk_errors) do
+    {
+      'errors' => [
+        {
+          'detail' => 'Name can\'t be blank',
+          'title' => 'Invalid name',
+          'source' => { 'pointer' => '/data/0/attributes/name' }
+        },
+        {
+          'detail' => 'Email must be a valid email',
+          'title' => 'Invalid email',
+          'source' => { 'pointer' => '/data/0/attributes/email' }
+        },
+        {
+          'detail' => 'Name can\'t be blank',
+          'title' => 'Invalid name',
+          'source' => { 'pointer' => '/data/1/attributes/name' }
+        },
+        {
+          'detail' => 'Email must be a valid email',
+          'title' => 'Invalid email',
+          'source' => { 'pointer' => '/data/1/attributes/email' }
+        }
+      ],
+      'jsonapi' => { 'version' => '1.0' }
+    }
+  end
+
   context 'when rendering ActiveModel::Errors' do
     controller do
       def create
@@ -86,6 +114,53 @@ describe ActionController::Base, '#render', type: :controller do
 
       expect(response.content_type).to eq('application/vnd.api+json')
       is_expected.to eq(serialized_errors)
+    end
+  end
+
+  context 'when rendering ActiveModel::Errors with bulk extension' do
+    before(:each) do
+      request.headers['Content-Type'] = 'application/vnd.api+json; ext="bulk"'
+      JSONAPI::Rails.configure do |config|
+        config.jsonapi_extensions = ['bulk']
+      end
+    end
+
+    after(:each) do
+      JSONAPI::Rails.configure do |config|
+        config.clear
+      end
+    end
+
+    controller do
+      def create
+        users = [User.new(email: 'lucas'), User.new(email: 'fran')]
+
+        unless users.map(&:valid?).all?
+          render jsonapi_errors: users.map(&:errors), extensions: ['bulk']
+        end
+      end
+
+      def jsonapi_pointers
+      {
+        0 => {
+          name: '/data/0/attributes/name',
+          email: '/data/0/attributes/email'
+        },
+        1 => {
+          name: '/data/1/attributes/name',
+          email: '/data/1/attributes/email'
+        }
+      }
+      end
+    end
+
+    subject { JSON.parse(response.body) }
+
+    it 'renders a JSON API error document' do
+      post :create
+
+      expect(response.content_type).to eq('application/vnd.api+json; supported-ext="bulk"; ext="bulk"')
+      is_expected.to eq(serialized_bulk_errors)
     end
   end
 end
