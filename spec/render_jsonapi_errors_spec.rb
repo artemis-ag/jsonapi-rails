@@ -42,12 +42,10 @@ describe ActionController::Base, '#render', type: :controller do
       end
 
       def jsonapi_pointers
-        [
-          {
-            name: '/data/attributes/name',
-            email: '/data/attributes/email'
-          }
-        ]
+        {
+          name: '/data/attributes/name',
+          email: '/data/attributes/email'
+        }
       end
     end
 
