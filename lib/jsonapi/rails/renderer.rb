@@ -52,10 +52,14 @@ module JSONAPI
         options = default_options(options, controller)
 
         errors = [errors] unless errors.is_a?(Array)
+        pointers = [controller.jsonapi_pointers].flatten
 
-        errors = errors.map.with_index do |e, index|
-          pointers = controller.jsonapi_pointers[index]
-          e.is_a?(Hash) ? e : JSONAPI::Rails::ActiveModel::Errors.new(e, pointers)
+        # TODO: complain if there's a mismatch between errors length
+        #       and pointers length?
+        errors = errors.zip(pointers).map do |e, reverse_mapping|
+          e.is_a?(::ActiveModel::Errors) ?
+            JSONAPI::Rails::ActiveModel::Errors.new(e, reverse_mapping) :
+            e
         end
 
         @renderer.render_errors(errors, options)
