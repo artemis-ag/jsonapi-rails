@@ -239,7 +239,7 @@ describe ActionController::Base, '#render', type: :controller do
 
     subject { JSON.parse(response.body) }
 
-    it 'matches sparse errors correctly to the original pointerst' do
+    it 'matches sparse errors correctly to the original pointers' do
       with_config(jsonapi_extensions: ['bulk']) do
         post :create
       end

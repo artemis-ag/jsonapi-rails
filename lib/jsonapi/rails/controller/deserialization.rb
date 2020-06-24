@@ -11,6 +11,7 @@ module JSONAPI
         extend ActiveSupport::Concern
 
         JSONAPI_POINTERS_KEY = 'jsonapi-rails.jsonapi_pointers'.freeze
+        HEADER_CONTENT_TYPE_REGEX = /;\sext=["']([^=]*)["']/
 
         class_methods do
           # Declare a deserializable resource.
@@ -59,34 +60,16 @@ module JSONAPI
                 next
               end
 
-              if extension_request?('bulk')
-                resource_pointers = []
-                resource_params = []
-
-                ActiveSupport::Notifications
-                  .instrument('parse.jsonapi-rails',
-                              key: key, payload: hash, class: klass) do
-                  hash[:data].each_with_index do |resource, index|
-                    JSONAPI::Parser::Document.parse_primary_resource!(resource)
-                    resource = klass.new(resource, root: "/data/#{index}")
-                    resource_pointers.push resource.reverse_mapping
-                    resource_params.push resource.to_hash
-                  end
-                end
-
-                controller.request.env[JSONAPI_POINTERS_KEY] = resource_pointers
-                controller.params[key.to_sym] = resource_params
-              else
-                ActiveSupport::Notifications
-                  .instrument('parse.jsonapi-rails',
-                              key: key, payload: hash, class: klass) do
-                  JSONAPI::Parser::Resource.parse!(hash)
-                  resource = klass.new(hash[:data])
-                  controller.request.env[JSONAPI_POINTERS_KEY] =
-                    resource.reverse_mapping
-                  controller.params[key.to_sym] = resource.to_hash
+              resource_pointers, resource_params = ActiveSupport::Notifications.instrument('parse.jsonapi-rails', key: key, payload: hash, class: klass) do
+                if extension_request?('bulk')
+                  parse_resources(hash, klass)
+                else
+                  parse_resource(hash, klass)
                 end
               end
+
+              controller.request.env[JSONAPI_POINTERS_KEY] = resource_pointers
+              controller.params[key.to_sym] = resource_params
             end
           end
         end
@@ -96,7 +79,7 @@ module JSONAPI
           return false unless supported_extensions.include?(extension)
 
           requested_extensions = request.headers['Content-Type']
-            .match(/;\sext=["']([^=]*)["']/)
+            .match(HEADER_CONTENT_TYPE_REGEX)
             .try(:[], 1).to_s
             .split(',')
           return (requested_extensions & supported_extensions).include?(extension)
@@ -110,7 +93,7 @@ module JSONAPI
 
         def jsonapi_supported_extensions
           extensions = JSONAPI::Rails.config[:jsonapi_extensions]
-          return nil unless extensions&.any?
+          return nil if extensions.empty?
 
           "supported-ext=\"#{extensions.join(',')}\""
         end
@@ -119,6 +102,26 @@ module JSONAPI
           return nil unless extensions&.any?
 
           "ext=\"#{extensions.join(',')}\""
+        end
+
+        def parse_resource(hash, klass)
+          JSONAPI::Parser::Resource.parse!(hash)
+          resource = klass.new(hash[:data])
+          [resource.reverse_mapping, resource.to_hash]
+        end
+
+        def parse_resources(hash, klass)
+          resource_pointers = []
+          resource_params = []
+
+          hash[:data].each_with_index do |resource, index|
+            JSONAPI::Parser::Document.parse_primary_resource!(resource)
+            resource = klass.new(resource, root: "/data/#{index}")
+            resource_pointers.push resource.reverse_mapping
+            resource_params.push resource.to_hash
+          end
+
+          [resource_pointers, resource_params]
         end
       end
     end
