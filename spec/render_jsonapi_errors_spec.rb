@@ -77,6 +77,13 @@ describe ActionController::Base, '#render', type: :controller do
 
         render jsonapi_errors: errors
       end
+
+      def jsonapi_pointers
+        {
+          name: '/data/attributes/name',
+          email: '/data/attributes/email'
+        }
+      end
     end
 
     subject { JSON.parse(response.body) }

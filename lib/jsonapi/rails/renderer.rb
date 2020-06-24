@@ -54,8 +54,14 @@ module JSONAPI
         errors = [errors] unless errors.is_a?(Array)
         pointers = [controller.jsonapi_pointers].flatten
 
-        # TODO: complain if there's a mismatch between errors length
-        #       and pointers length?
+        # If the errors are ActiveModel::Error objects, we expect errors and pointers
+        # to have the same length because each user has one Error object. However, if
+        # the errors are hashes, each individual error for each user has a hash
+        # and the length may be different.
+        if (errors.length != pointers.length) && pointers[0].class != Hash
+          raise 'Invariant violation: errors and pointers must have the same length'
+        end
+
         errors = errors.zip(pointers).map do |e, reverse_mapping|
           e.is_a?(::ActiveModel::Errors) ?
             JSONAPI::Rails::ActiveModel::Errors.new(e, reverse_mapping) :
@@ -74,6 +80,7 @@ module JSONAPI
           opts[:expose] =
             controller.jsonapi_expose
                       .merge(opts[:expose] || {})
+                      .merge!(_jsonapi_pointers: controller.jsonapi_pointers)
           opts[:jsonapi] = opts.delete(:jsonapi_object) ||
                            controller.jsonapi_object
         end
