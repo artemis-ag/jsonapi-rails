@@ -51,21 +51,57 @@ module JSONAPI
       def render(errors, options, controller)
         options = default_options(options, controller)
 
-        errors = [errors] unless errors.is_a?(Array)
-        pointers = [controller.jsonapi_pointers].flatten
+        # when rendering bulk errors, each item in the errors argument represents
+        # errors for the corresponding resource in the payload.
+        #
+        # if the payload looks like
+        #   {
+        #     data: [
+        #       {
+        #         id: 1,
+        #         attributes: { ... }
+        #       },
+        #       {
+        #         id: 2,
+        #         attributes: { ... }
+        #       },
+        #       {
+        #         id: 3,
+        #         attributes: { ... }
+        #       }
+        #     ]
+        #   }
+        #
+        # then the ErrorsRenderer must be invoked with 3 errors objects
+        #
+        #   render :jsonapi_errors [errors_for_1, errors_for_2, errors_for_3],
+        #          extensions: ['bulk']
+        #
+        # Errors can be any class that is registered in the jsonapi_errors_class
+        # configuration, or an array of any such classes. However, there *must*
+        # be an object to represent errors for each resource from the request.
+        #
+        # If there are no errors for a given object, an empty array will serve
+        # fine to indicate so. Note that an instance of ActiveModel::Errors will
+        # still exist even if there are no current errors for a given model in rails.
 
-        # If the errors are ActiveModel::Error objects, we expect errors and pointers
-        # to have the same length because each user has one Error object. However, if
-        # the errors are hashes, each individual error for each user has a hash
-        # and the length may be different.
-        if (errors.length != pointers.length) && pointers[0].class != Hash
-          raise 'Invariant violation: errors and pointers must have the same length'
-        end
+        errors = if options[:extensions].include? 'bulk'
+          raise ArgumentError, 'JSONApi responses that support the "Bulk" extension need to return an array' unless errors.is_a?(Array)
+          pointers = [controller.jsonapi_pointers].flatten
 
-        errors = errors.zip(pointers).map do |e, reverse_mapping|
-          e.is_a?(::ActiveModel::Errors) ?
-            JSONAPI::Rails::ActiveModel::Errors.new(e, reverse_mapping) :
-            e
+          # If the errors are ActiveModel::Error objects, we expect errors and pointers
+          # to have the same length because each user has one Error object. However, if
+          # the errors are hashes, each individual error for each user has a hash
+          # and the length may be different.
+          if (errors.length != pointers.length)
+            raise ArgumentError, 'Mismatch between number of resources submitted and errors reported. If there are no errors for a given record please provide an empty array.'
+          end
+
+          errors.zip(pointers).map do |e, reverse_mapping|
+            wrap_errors(e, reverse_mapping)
+          end.flatten
+        else
+          wrap_errors(errors, controller.jsonapi_pointers)
         end
 
         @renderer.render_errors(errors, options)
@@ -83,7 +119,14 @@ module JSONAPI
                       .merge!(_jsonapi_pointers: controller.jsonapi_pointers)
           opts[:jsonapi] = opts.delete(:jsonapi_object) ||
                            controller.jsonapi_object
+          opts[:extensions] = opts[:extensions] || []
         end
+      end
+
+      def wrap_errors(errors, reverse_mapping)
+        errors.is_a?(::ActiveModel::Errors) ?
+          JSONAPI::Rails::ActiveModel::Errors.new(errors, reverse_mapping) :
+          errors
       end
     end
   end
