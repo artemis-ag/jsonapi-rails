@@ -99,12 +99,12 @@ module JSONAPI
 
           errors.zip(pointers).map do |e, reverse_mapping|
             wrap_errors(e, reverse_mapping)
-          end.flatten
+          end
         else
-          wrap_errors(errors, controller.jsonapi_pointers)
+          [wrap_errors(errors, controller.jsonapi_pointers)]
         end
 
-        @renderer.render_errors(errors, options)
+        @renderer.render_errors(errors.flatten, options)
       end
 
       private
