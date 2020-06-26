@@ -50,11 +50,12 @@ module JSONAPI
 
       def render(errors, options, controller)
         options = default_options(options, controller)
+        errors = [errors] unless errors.is_a?(Array)
 
-        # when rendering bulk errors, each item in the errors argument represents
+        # When rendering bulk errors, each item in the errors argument represents
         # errors for the corresponding resource in the payload.
         #
-        # if the payload looks like
+        # Given the payload looks something like:
         #   {
         #     data: [
         #       {
@@ -86,13 +87,8 @@ module JSONAPI
         # still exist even if there are no current errors for a given model in rails.
 
         errors = if options[:extensions].include? 'bulk'
-          raise ArgumentError, 'JSONApi responses that support the "Bulk" extension need to return an array' unless errors.is_a?(Array)
           pointers = [controller.jsonapi_pointers].flatten
 
-          # If the errors are ActiveModel::Error objects, we expect errors and pointers
-          # to have the same length because each user has one Error object. However, if
-          # the errors are hashes, each individual error for each user has a hash
-          # and the length may be different.
           if (errors.length != pointers.length)
             raise ArgumentError, 'Mismatch between number of resources submitted and errors reported. If there are no errors for a given record please provide an empty array.'
           end
@@ -101,10 +97,12 @@ module JSONAPI
             wrap_errors(e, reverse_mapping)
           end
         else
-          [wrap_errors(errors, controller.jsonapi_pointers)]
-        end
+          errors.map do |e|
+            wrap_errors(e, controller.jsonapi_pointers)
+          end
+        end.flatten.compact
 
-        @renderer.render_errors(errors.flatten, options)
+        @renderer.render_errors(errors, options)
       end
 
       private
