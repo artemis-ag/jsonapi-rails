@@ -14,7 +14,7 @@ module JSONAPI
       end.freeze
 
       DEFAULT_JSONAPI_ERRORS_CLASS = DEFAULT_JSONAPI_CLASS.dup.merge!(
-        'ActiveModel::Errors'.to_sym =>
+        'JSONAPI::Rails::ActiveModel::Errors'.to_sym =>
         JSONAPI::Rails::SerializableActiveModelErrors,
         'Hash'.to_sym => JSONAPI::Rails::SerializableErrorHash
       ).freeze
@@ -28,6 +28,8 @@ module JSONAPI
       DEFAULT_JSONAPI_EXPOSE = lambda {
         { url_helpers: ::Rails.application.routes.url_helpers }
       }
+
+      DEFAULT_JSONAPI_EXTENSIONS = []
 
       DEFAULT_JSONAPI_FIELDS = ->() { nil }
 
@@ -46,6 +48,7 @@ module JSONAPI
         jsonapi_errors_class: DEFAULT_JSONAPI_ERRORS_CLASS,
         jsonapi_cache:   DEFAULT_JSONAPI_CACHE,
         jsonapi_expose:  DEFAULT_JSONAPI_EXPOSE,
+        jsonapi_extensions: DEFAULT_JSONAPI_EXTENSIONS,
         jsonapi_fields:  DEFAULT_JSONAPI_FIELDS,
         jsonapi_include: DEFAULT_JSONAPI_INCLUDE,
         jsonapi_links:   DEFAULT_JSONAPI_LINKS,

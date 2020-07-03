@@ -18,8 +18,9 @@ module JSONAPI
     # @private
     class SerializableActiveModelErrors
       def initialize(exposures)
-        @errors = exposures[:object]
-        @reverse_mapping = exposures[:_jsonapi_pointers] || {}
+        object = exposures[:object]
+        @errors = object.errors
+        @reverse_mapping = object.reverse_mapping
 
         freeze
       end

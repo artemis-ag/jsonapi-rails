@@ -12,7 +12,7 @@ JSONAPI::Rails.configure do |config|
   #   klass = names.pop
   #   h[k] = [*names, "Serializable#{klass}"].join('::').safe_constantize
   # }.tap { |h|
-  #   h[:'ActiveModel::Errors'] = JSONAPI::Rails::SerializableActiveModelErrors
+  #   h[:'JSONAPI::Rails::ActiveModel::Errors'] = JSONAPI::Rails::SerializableActiveModelErrors
   #   h[:Hash] = JSONAPI::Rails::SerializableErrorHash
   # }
   #
